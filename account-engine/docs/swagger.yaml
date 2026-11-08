@@ -1,0 +1,752 @@
+basePath: /
+definitions:
+  handler.Response:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data: {}
+      msg:
+        example: success
+        type: string
+    type: object
+  model.Song:
+    properties:
+      album:
+        type: string
+      album_id:
+        description: 某些源特有，用于获取封面
+        type: string
+      artist:
+        type: string
+      bitrate:
+        description: 码率 (kbps)
+        type: integer
+      cover:
+        description: 封面图片链接
+        type: string
+      duration:
+        description: 秒
+        type: integer
+      ext:
+        description: 文件后缀 (mp3, flac...)
+        type: string
+      extra:
+        additionalProperties:
+          type: string
+        description: 用于存储源特有的元数据，避免解析 ID
+        type: object
+      id:
+        type: string
+      is_invalid:
+        description: '[新增] 标记歌曲是否无效 (经过 Probe 探测后)'
+        type: boolean
+      link:
+        description: '[新增] 歌曲原始链接 (例如网页地址)'
+        type: string
+      name:
+        type: string
+      size:
+        description: 文件大小 (字节)
+        type: integer
+      source:
+        description: kugou, netease, qq, bilibili...
+        type: string
+      url:
+        description: 真实音频文件下载链接
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 这是一个基于底层库构建的跨平台音乐搜索与解析统一 API 服务。
+  title: Go Music API
+  version: "1.0"
+paths:
+  /api/v1/album/detail:
+    get:
+      description: 传入源平台的专辑 ID，返回专辑内歌曲列表。
+      parameters:
+      - description: 专辑 ID
+        example: "12345"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 专辑所属平台
+        enum:
+        - netease
+        - qq
+        - kugou
+        - kuwo
+        - migu
+        - jamendo
+        - joox
+        - qianqian
+        - soda
+        in: query
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 专辑歌曲列表
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 源不支持或参数缺失
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取专辑详情
+      tags:
+      - Album
+  /api/v1/music/cover:
+    get:
+      description: 发送带伪造标头的请求拉取远端封面大图，避开网易云、QQ 音乐的图片防盗链 403 问题。
+      parameters:
+      - default: https://p1.music.126.net/u9YkzGKeL6VgHQZ1Zb-7Sw==/2529976256655220.jpg
+        description: 封面图原始 URL (需经过 urlencode)
+        example: https://p1.music.126.net/u9YkzGKeL6VgHQZ1Zb-7Sw==/2529976256655220.jpg
+        in: query
+        name: url
+        required: true
+        type: string
+      - default: 香水有毒
+        description: 歌曲名(用于生成下载文件名)
+        example: 香水有毒
+        in: query
+        name: name
+        type: string
+      - default: 胡杨林
+        description: 歌手名(用于生成下载文件名)
+        example: 胡杨林
+        in: query
+        name: artist
+        type: string
+      produces:
+      - image/jpeg
+      responses:
+        "200":
+          description: 原封不动的图片流
+          schema:
+            type: file
+      summary: 代理请求并下载封面图
+      tags:
+      - Music
+  /api/v1/music/inspect:
+    get:
+      description: 快速探测音频直链的可访问性，并根据 `Content-Range` 推算文件大小及大概码率。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 音乐来源平台
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      - default: "290"
+        description: 音乐时长(秒)，提供可精确预估码率(kbps)
+        example: "290"
+        in: query
+        name: duration
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 包含有效状态、真实URL、文件大小和码率等探测信息
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 探测音频大小与码率
+      tags:
+      - Music
+  /api/v1/music/lyric:
+    get:
+      description: 抓取对应歌曲的完整 LRC 歌词文本，以 JSON 格式返回。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 平台
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 包含 lyric 字符串属性的数据对象
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 对应平台未实现歌词抓取
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取 JSON 格式歌词
+      tags:
+      - Music
+  /api/v1/music/lyric/file:
+    get:
+      description: 作为附件直接下载 `.lrc` 后缀的歌词文件到本地。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 平台
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      - default: 香水有毒
+        description: 音乐名称 (生成保存文件名)
+        example: 香水有毒
+        in: query
+        name: name
+        type: string
+      - default: 胡杨林
+        description: 歌手名称 (生成保存文件名)
+        example: 胡杨林
+        in: query
+        name: artist
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 纯文本文件流
+          schema:
+            type: file
+      summary: 下载 LRC 歌词文件
+      tags:
+      - Music
+  /api/v1/music/search:
+    get:
+      description: 兼容多源并发搜索以及链接智能解析，自动返回单曲、歌单或专辑数组。支持直接输入关键词或粘贴音乐平台的分享链接。
+      parameters:
+      - default: 香水有毒
+        description: 关键词或音乐分享链接
+        example: 香水有毒
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: song
+        description: '搜索类型: song (单曲)、playlist (歌单) 或 album (专辑)'
+        enum:
+        - song
+        - playlist
+        - album
+        in: query
+        name: type
+        type: string
+      - collectionFormat: multi
+        description: '指定的音源数组(留空则默认全平台)。例: netease, qq'
+        in: query
+        items:
+          type: string
+        name: sources
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功时返回解析的数据，包含歌曲、歌单或专辑列表
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 不支持的链接解析
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "500":
+          description: 解析过程出现错误
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 综合搜索与链接解析
+      tags:
+      - Music
+  /api/v1/music/stream:
+    get:
+      description: 包含完整的各平台流代理逻辑（解决跨域防盗链），并特殊支持 Soda(汽水音乐) 加密流数据的后端解密。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 音乐来源平台
+        enum:
+        - netease
+        - qq
+        - kugou
+        - kuwo
+        - bilibili
+        - soda
+        - migu
+        - fivesing
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      - default: 香水有毒
+        description: 音乐名称 (用于生成下载文件名)
+        example: 香水有毒
+        in: query
+        name: name
+        type: string
+      - default: 胡杨林
+        description: 歌手名称 (用于生成下载文件名)
+        example: 胡杨林
+        in: query
+        name: artist
+        type: string
+      produces:
+      - audio/mpeg
+      responses:
+        "200":
+          description: 直接返回音频二进制流，支持 HTTP Range
+          schema:
+            type: file
+        "400":
+          description: 参数缺失或非法
+          schema:
+            type: string
+        "404":
+          description: 找不到音频URL
+          schema:
+            type: string
+        "500":
+          description: 音频解密失败
+          schema:
+            type: string
+      summary: 串流代理与下载音频
+      tags:
+      - Music
+  /api/v1/music/switch:
+    get:
+      description: 当某一平台的歌曲灰掉（无版权）时，智能寻源切换到其他存在该歌曲的可用平台。
+      parameters:
+      - default: 香水有毒
+        description: 歌曲名称 (非常关键的匹配项)
+        example: 香水有毒
+        in: query
+        name: name
+        required: true
+        type: string
+      - default: 胡杨林
+        description: 歌手名称
+        example: 胡杨林
+        in: query
+        name: artist
+        type: string
+      - default: netease
+        description: 当前损坏的音源(将跳过此源搜索)
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      - default: ""
+        description: 指定目标尝试的音源，为空则遍历主流平台搜索
+        example: ""
+        in: query
+        name: target
+        type: string
+      - default: "290"
+        description: 原音频时长(秒)，提供此时长可极大提高匹配准确度
+        example: "290"
+        in: query
+        name: duration
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功找到高匹配度的可用歌曲
+          schema:
+            $ref: '#/definitions/model.Song'
+        "400":
+          description: 参数错误(缺失歌名)
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "404":
+          description: 未匹配到任何可用平替源
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 智能切换可用的平替音源
+      tags:
+      - Music
+  /api/v1/music/url:
+    get:
+      description: 获取解析到的原始音频播放链接。注：部分平台需要客户端带上特定的防盗链 header。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 平台源
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 直接返回带有 url 的数据实体
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 源不支持
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "500":
+          description: 链接抓取失败
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取音频裸直链
+      tags:
+      - Music
+  /api/v1/playlist/categories:
+    get:
+      description: 获取一个或多个平台支持的歌单分类标签。
+      parameters:
+      - collectionFormat: multi
+        description: 指定平台列表，留空则使用全部支持分类的平台
+        in: query
+        items:
+          type: string
+        name: sources
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 按平台分组的歌单分类
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取歌单分类
+      tags:
+      - Playlist
+  /api/v1/playlist/category:
+    get:
+      description: 按平台和分类 ID 分页获取歌单。
+      parameters:
+      - default: netease
+        description: 平台
+        enum:
+        - netease
+        - qq
+        - kugou
+        - kuwo
+        - migu
+        - qianqian
+        - joox
+        in: query
+        name: source
+        required: true
+        type: string
+      - description: 分类 ID
+        in: query
+        name: category_id
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 30
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 分类歌单列表
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 源不支持或参数缺失
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取分类歌单
+      tags:
+      - Playlist
+  /api/v1/playlist/detail:
+    get:
+      description: 传入源平台的对应歌单 ID，全量拉取并返回歌单内的全部单曲列表。
+      parameters:
+      - default: "596729952"
+        description: 歌单的内部 ID
+        example: "596729952"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 歌单所属平台
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功的数组列表
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 源不支持
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取歌单详情
+      tags:
+      - Playlist
+  /api/v1/playlist/recommend:
+    get:
+      description: 异步并发调用所勾选平台的接口，聚合返回他们各自首页推荐的当红歌单数据。
+      parameters:
+      - collectionFormat: multi
+        default: netease,qq,kugou,kuwo
+        description: 要获取的推荐平台列表 (留空则使用默认配置)
+        in: query
+        items:
+          type: string
+        name: sources
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 各个平台的推荐歌单数组
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取每日推荐热门歌单
+      tags:
+      - Playlist
+  /api/v1/playlist/user:
+    get:
+      description: 使用已配置 Cookie 获取登录账号的个人歌单。QQ 支持我喜欢、个人目录歌单和收藏歌单。
+      parameters:
+      - default: qq
+        description: 平台
+        enum:
+        - netease
+        - qq
+        - kugou
+        in: query
+        name: source
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 30
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 个人歌单列表
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 源不支持或参数缺失
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取个人歌单
+      tags:
+      - Playlist
+  /api/v1/system/cookies:
+    get:
+      description: 读取并在 JSON 格式下返回当前系统已配置的各平台 Cookies。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回各平台 Cookie 键值对
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取当前系统加载的 Cookies
+      tags:
+      - System
+    post:
+      consumes:
+      - application/json
+      description: 接收 JSON 格式的平台 cookie 键值对，覆盖并保存到系统，实时生效。
+      parameters:
+      - description: 平台Cookies映射示例：{\
+        in: body
+        name: cookies
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 操作成功
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 参数解析失败
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 设置系统 Cookies
+      tags:
+      - System
+  /api/v1/system/qr_login/{source}:
+    get:
+      description: 使用创建扫码登录会话返回的 key 轮询登录状态；成功时自动写入 cookies.json。
+      parameters:
+      - description: 扫码登录平台
+        enum:
+        - netease
+        - qq
+        - qq_wx
+        - kugou
+        - bilibili
+        example: qq_wx
+        in: path
+        name: source
+        required: true
+        type: string
+      - description: 扫码登录 key
+        in: query
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 扫码登录状态
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "400":
+          description: 缺少 key
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "404":
+          description: 平台不支持扫码登录
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 轮询扫码登录状态
+      tags:
+      - System
+    post:
+      description: 为指定平台创建扫码登录会话，返回二维码 URL、二维码图片地址或平台登录 key。
+      parameters:
+      - description: 扫码登录平台
+        enum:
+        - netease
+        - qq
+        - qq_wx
+        - kugou
+        - bilibili
+        example: qq_wx
+        in: path
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 扫码登录会话
+          schema:
+            $ref: '#/definitions/handler.Response'
+        "404":
+          description: 平台不支持扫码登录
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 创建扫码登录会话
+      tags:
+      - System
+  /api/v1/system/qr_login/sources:
+    get:
+      description: 返回当前 API 支持创建二维码登录会话的平台列表。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 支持扫码登录的平台
+          schema:
+            $ref: '#/definitions/handler.Response'
+      summary: 获取支持扫码登录的平台
+      tags:
+      - System
+  /music/lyric:
+    get:
+      description: 直接返回 `text/plain` 格式的纯歌词内容。若拉取失败，返回默认占位符提示。
+      parameters:
+      - default: "240479"
+        description: 音乐 ID
+        example: "240479"
+        in: query
+        name: id
+        required: true
+        type: string
+      - default: netease
+        description: 平台
+        example: netease
+        in: query
+        name: source
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: LRC 文本
+          schema:
+            type: string
+      summary: 返回纯文本歌词 (旧版兼容)
+      tags:
+      - Music (Compat)
+swagger: "2.0"

@@ -1,0 +1,145 @@
+package router
+
+import (
+	"crypto/subtle"
+	"github.com/guohuiyuan/go-music-api/handler"
+	"github.com/guohuiyuan/go-music-api/service"
+	"os"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "github.com/guohuiyuan/go-music-api/docs"
+)
+
+func SetupRouter() *gin.Engine {
+	r := gin.New()
+	r.Use(gin.Recovery())
+	// A bridge holds one person's sessions. Require its private connection key.
+	r.Use(func(c *gin.Context) {
+		key := os.Getenv("MUSIC_API_TOKEN")
+		provided := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if len(key) < 16 {
+			c.AbortWithStatusJSON(503, gin.H{"code": 503, "msg": "MUSIC_API_TOKEN must contain at least 16 characters"})
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(provided), []byte(key)) != 1 {
+			c.AbortWithStatusJSON(403, gin.H{"code": 403, "msg": "invalid connection key"})
+			return
+		}
+		c.Next()
+	})
+
+	// 跨域处理 (对齐 server.go 的 corsMiddleware)
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// Swagger UI
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// ==========================================
+	// 标准化 API 路由 (推荐外部项目接入使用)
+	// ==========================================
+	api := r.Group("/api/v1")
+	{
+		// 1. 系统配置
+		sys := api.Group("/system")
+		{
+			sys.POST("/accounts/:source/session", handler.ImportWebSession)
+			sys.GET("/status", func(c *gin.Context) {
+				c.JSON(200, gin.H{"code": 200, "data": gin.H{
+					"netease": service.CM.Get("netease") != "",
+					"qq":      service.CM.Get("qq") != "",
+				}})
+			})
+			sys.DELETE("/accounts/:source", func(c *gin.Context) {
+				source := c.Param("source")
+				if source != "netease" && source != "qq" {
+					c.AbortWithStatus(400)
+					return
+				}
+				if err := service.CM.SetSession(source, ""); err != nil {
+					c.AbortWithStatus(500)
+					return
+				}
+				c.JSON(200, gin.H{"code": 200, "data": gin.H{"logged_out": true}})
+			})
+			sys.GET("/cookies", handler.GetCookies)
+			sys.POST("/cookies", handler.SetCookies)
+			sys.GET("/qr_login/sources", handler.GetQRLoginSources)
+			sys.POST("/qr_login/:source", handler.CreateQRLogin)
+			sys.GET("/qr_login/:source", handler.CheckQRLogin)
+		}
+
+		// 2. 单曲相关 (Music)
+		music := api.Group("/music")
+		{
+			music.GET("/search", handler.UnifiedSearch)         // 综合搜索(支持链接解析与多源)
+			music.GET("/url", handler.GetMusicUrl)              // 获取音频直链
+			music.GET("/stream", handler.StreamMusic)           // 代理音频流(含soda解密) / 下载音频
+			music.GET("/inspect", handler.InspectMusic)         // 探测音频大小与码率
+			music.GET("/switch", handler.SwitchSource)          // 智能切换可用音源
+			music.GET("/lyric", handler.GetLyric)               // 获取 JSON 格式歌词
+			music.GET("/lyric/file", handler.DownloadLyricFile) // 下载 .lrc 歌词文件
+			music.GET("/cover", handler.ProxyCover)             // 代理/下载封面图防盗链
+		}
+
+		// 3. 歌单相关 (Playlist)
+		playlist := api.Group("/playlist")
+		{
+			playlist.GET("/detail", handler.GetPlaylistDetail)
+			playlist.GET("/recommend", handler.GetRecommendPlaylists)
+			playlist.GET("/categories", handler.GetPlaylistCategories)
+			playlist.GET("/category", handler.GetCategoryPlaylists)
+			playlist.GET("/user", handler.GetUserPlaylists)
+		}
+
+		album := api.Group("/album")
+		{
+			album.GET("/detail", handler.GetAlbumDetail)
+		}
+	}
+
+	// ==========================================
+	// 兼容 server.go 专属路由组
+	// ==========================================
+	// 改组路由完全模拟了原 server.go 暴露的接口路径，并复用上述增强版 handler。
+	// 直接挂载即可无缝衔接原有的网页前端。
+	compat := r.Group("/music")
+	{
+		compat.GET("/cookies", handler.GetCookies)
+		compat.POST("/cookies", handler.SetCookies)
+		compat.GET("/qr_login/sources", handler.GetQRLoginSources)
+		compat.POST("/qr_login/:source", handler.CreateQRLogin)
+		compat.GET("/qr_login/:source", handler.CheckQRLogin)
+
+		compat.GET("/search", handler.UnifiedSearch)            // 对应 server.go 的 /search
+		compat.GET("/playlist", handler.GetPlaylistDetail)      // 对应 server.go 的 /playlist
+		compat.GET("/album", handler.GetAlbumDetail)            // 对应 server.go 的 /album
+		compat.GET("/recommend", handler.GetRecommendPlaylists) // 对应 server.go 的 /recommend
+		compat.GET("/playlist_categories", handler.GetPlaylistCategories)
+		compat.GET("/category_playlists", handler.GetCategoryPlaylists)
+		compat.GET("/user_playlists", handler.GetUserPlaylists)
+
+		compat.GET("/inspect", handler.InspectMusic)           // 对应 server.go 的 /inspect
+		compat.GET("/switch_source", handler.SwitchSource)     // 对应 server.go 的 /switch_source
+		compat.GET("/download", handler.StreamMusic)           // 对应 server.go 的 /download
+		compat.GET("/download_lrc", handler.DownloadLyricFile) // 对应 server.go 的 /download_lrc
+		compat.GET("/download_cover", handler.ProxyCover)      // 对应 server.go 的 /download_cover
+		compat.GET("/lyric", handler.GetLyricText)             // 对应 server.go 的 /lyric (纯文本返回)
+	}
+
+	return r
+}

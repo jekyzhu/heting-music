@@ -1,0 +1,3 @@
+0.7.1 验证记录
+22 项 JavaScript / React 组件检查通过；TypeScript 无错误；Android release 编译通过；APK V2 签名通过；与 0.7.0 签名一致；新增原生 QQ 调用、同层歌单和声明已包含在打包内容。
+本次未执行真实 QQ 账号或小米 17 Ultra 真机端到端测试。
