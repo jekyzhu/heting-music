@@ -79,5 +79,7 @@
 	<string>用于选择你自己的歌单封面。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>用于按你的操作保存歌单封面。</string>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

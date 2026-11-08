@@ -53,6 +53,19 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/heting-simulator" -jobs 2 \
             CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build \
             | tee "$GITHUB_WORKSPACE/output/logs/simulator.log"
+      - name: Launch simulator and capture the actual app
+        shell: bash
+        run: |
+          set -euo pipefail
+          HETING_SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x["name"].startswith("iPhone")))')
+          xcrun simctl boot "$HETING_SIM_ID"
+          xcrun simctl bootstatus "$HETING_SIM_ID" -b
+          xcrun simctl install "$HETING_SIM_ID" "$RUNNER_TEMP/heting-simulator/Build/Products/Release-iphonesimulator/MusicFree.app"
+          xcrun simctl launch "$HETING_SIM_ID" fun.upup.heting.personal
+          sleep 20
+          xcrun simctl spawn "$HETING_SIM_ID" launchctl list > output/logs/simulator-processes.txt
+          python3 -c 'import pathlib; rows=pathlib.Path("output/logs/simulator-processes.txt").read_text().splitlines(); assert any("fun.upup.heting.personal" in x and x.split()[0].isdigit() for x in rows), "iPhone simulator app exited"'
+          xcrun simctl io "$HETING_SIM_ID" screenshot output/iPhone-preview.png
       - name: Archive unsigned iPhone application
         shell: bash
         working-directory: android-app/ios
@@ -80,6 +93,7 @@ jobs:
             output/*.ipa
             output/*simulator.zip
             output/*.md
+            output/*preview.png
             output/SHA256.txt
           retention-days: 14
       - uses: actions/upload-artifact@v4
