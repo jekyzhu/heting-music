@@ -14,6 +14,6 @@ export default function NavBar() {
 }
 const s = StyleSheet.create({
     bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, height: 66, backgroundColor: c.paper },
-    menu: { width: 26, height: 24 }, brand: { alignItems: "center" }, name: { fontFamily: "serif", fontSize: 23, color: c.ink, letterSpacing: 3 }, subtitle: { fontSize: 7, letterSpacing: 1.7, color: c.gold, marginTop: 5 },
+    menu: { width: 26, height: 24 }, brand: { alignItems: "center" }, name: { fontFamily: c.serif, fontSize: 23, color: c.ink, letterSpacing: 3 }, subtitle: { fontSize: 7, letterSpacing: 1.7, color: c.gold, marginTop: 5 },
     seal: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.gold, paddingHorizontal: 6, paddingVertical: 5, borderRadius: 3 }, sealText: { color: c.gold, fontSize: 8 },
 });
