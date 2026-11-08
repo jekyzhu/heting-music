@@ -11,7 +11,7 @@
 ## 下载与构建状态
 
 - [安卓 0.7.1 安装包及说明](releases/android/0.7.1/)：已构建、签名和完整性检查，可覆盖升级。
-- [iPhone 云端构建](../../actions/workflows/ios-build.yml)：使用 GitHub 的 Mac 编译，产物需要苹果签名后才能装到手机。
+- [iPhone 云端构建](https://github.com/jekyzhu/heting-music/actions/workflows/ios-build.yml)：使用 GitHub 的 Mac 编译，产物需要苹果签名后才能装到手机。
 - [只有 Windows 时的 iPhone 安装说明](docs/iPhone安装与构建.md)：包含签名、侧载、免费账号续签限制与 Mac 构建方法。
 
 共享界面/登录流程的 22 项自动检查、TypeScript 与 Go 本机模块检查已通过。iPhone Xcode 编译状态以 Actions 具体运行结果为准；真实账号和 iPhone 真机尚未验收。
