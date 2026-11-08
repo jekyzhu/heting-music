@@ -10,7 +10,22 @@ static void accountReleaseUTF(JNIEnv *env, jstring value, const char *text) { (*
 */
 import "C"
 
-import "github.com/guohuiyuan/go-music-api/embedded"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/guohuiyuan/go-music-api/router"
+	"github.com/guohuiyuan/go-music-api/service"
+	"net"
+	"net/http"
+	"os"
+	"sync"
+	"time"
+)
+
+var androidEngine struct {
+	sync.Mutex
+	port int
+	key  string
+}
 
 //export Java_fun_upup_musicfree_account_EmbeddedMusicNative_start
 func Java_fun_upup_musicfree_account_EmbeddedMusicNative_start(env *C.JNIEnv, clazz C.jclass, keyValue C.jstring, fileValue C.jstring) (result C.jint) {
@@ -24,5 +39,28 @@ func Java_fun_upup_musicfree_account_EmbeddedMusicNative_start(env *C.JNIEnv, cl
 	fileText := C.accountUTF(env, fileValue)
 	defer C.accountReleaseUTF(env, fileValue, fileText)
 	key, file := C.GoString(keyText), C.GoString(fileText)
-	return C.jint(embedded.Start(key, file))
+	if len(key) < 32 || file == "" {
+		return -1
+	}
+	androidEngine.Lock()
+	defer androidEngine.Unlock()
+	if androidEngine.port != 0 {
+		if androidEngine.key != key {
+			return -1
+		}
+		return C.jint(androidEngine.port)
+	}
+	service.CookieFile = file
+	service.CM.Load()
+	os.Setenv("MUSIC_API_TOKEN", key)
+	gin.SetMode(gin.ReleaseMode)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return -1
+	}
+	androidEngine.port = listener.Addr().(*net.TCPAddr).Port
+	androidEngine.key = key
+	server := &http.Server{Handler: router.SetupRouter(), ReadHeaderTimeout: 10 * time.Second}
+	go server.Serve(listener)
+	return C.jint(androidEngine.port)
 }

@@ -10,7 +10,6 @@ test("allows the platform's HTTPS login and captcha domains", () => {
 
 test("recognizes the real official H5 one-key QQ scheme, without allowing arbitrary app links", () => {
     expect(isQQAppLogin("wtloginmqq://ptlogin/qlogin?p=" + encodeURIComponent("https://ssl.ptlogin2.qq.com/jump?u1=test"))).toBe(true);
-    for (const scheme of ["wtloginmqq2", "wtloginmqq3"]) { expect(isQQAppLogin(`${scheme}://ptlogin/qlogin?p=` + encodeURIComponent("https://ssl.ptlogin2.qq.com/jump?u1=test"))).toBe(true); }
     for (const address of ["wtloginmqq://ptlogin/qlogin", "wtloginmqq://ptlogin/chat?p=https://ssl.ptlogin2.qq.com/", "intent://evil/#Intent;scheme=wtloginmqq;end", "wtloginmqq://ptlogin/qlogin?p=" + encodeURIComponent("https://ssl.ptlogin2.qq.com.evil.example/jump")]) {
         expect(isQQAppLogin(address)).toBe(false);
     }

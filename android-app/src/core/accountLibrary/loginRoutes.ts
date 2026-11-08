@@ -25,7 +25,7 @@ export function isQQMusicCallback(address: string): boolean {
 export function isQQAppLogin(address: string): boolean {
     try {
         const url = new URL(address);
-        if (!["wtloginmqq:", "wtloginmqq2:", "wtloginmqq3:"].includes(url.protocol) || url.hostname !== "ptlogin" || url.pathname !== "/qlogin") { return false; }
+        if (url.protocol !== "wtloginmqq:" || url.hostname !== "ptlogin" || url.pathname !== "/qlogin") { return false; }
         const ticket = url.searchParams.get("p") || url.searchParams.get("qrcode");
         if (!ticket) { return false; }
         const target = new URL(ticket);
