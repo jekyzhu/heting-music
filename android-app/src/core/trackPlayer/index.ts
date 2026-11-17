@@ -30,6 +30,7 @@ import ReactNativeTrackPlayer, {
     useProgress,
 } from "react-native-track-player";
 import LocalMusicSheet from "../localMusicSheet";
+import { SoundEffects } from "../soundEffects";
 
 import { TrackPlayerEvents } from "@/core.defination/trackPlayer";
 import type { IAppConfig } from "@/types/core/config";
@@ -594,6 +595,7 @@ class TrackPlayer extends EventEmitter<{
             if (info && this.isCurrentMusic(musicItem)) {
                 const mergedTrack = this.mergeTrackSource(track, info);
                 getDefaultStore().set(currentMusicAtom, mergedTrack as IMusic.IMusicItem);
+                SoundEffects.trackChanged(mergedTrack);
                 await ReactNativeTrackPlayer.updateMetadataForTrack(
                     0,
                     mergedTrack as TrackMetadataBase,
@@ -744,6 +746,7 @@ class TrackPlayer extends EventEmitter<{
     /**************** 辅助函数 -- 设置内部状态 ****************/
 
     private setCurrentMusic(musicItem?: IMusic.IMusicItem | null) {
+        SoundEffects.trackChanged(musicItem ?? null);
         // 设置UI内部状态的musicitem
         if (!musicItem) {
             this.currentIndex = -1;

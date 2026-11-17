@@ -44,6 +44,7 @@ export interface ILanguageData {
 
     // 侧边栏相关
     "sidebar.basicSettings": string; // 基本设置
+    "sidebar.soundEffects": string;
     "sidebar.pluginManagement": string; // 插件管理
     "sidebar.themeSettings": string; // 主题设置
     "sidebar.scheduleClose": string; // 定时关闭

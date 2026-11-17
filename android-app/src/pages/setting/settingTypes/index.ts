@@ -4,6 +4,7 @@ import BackupSetting from "./backupSetting";
 import BasicSetting from "./basicSetting";
 import PluginSetting from "./pluginSetting";
 import ThemeSetting from "./themeSetting";
+import SoundEffectsSetting from "./soundEffectsSetting";
 
 const settingTypes: Record<
     string,
@@ -14,6 +15,11 @@ const settingTypes: Record<
         i18nKey: string;
     }
 > = {
+    soundEffects: {
+        title: "智能音效",
+        i18nKey: "sidebar.soundEffects",
+        component: SoundEffectsSetting,
+    },
     basic: {
         title: "基本设置",
         i18nKey: "sidebar.basicSettings",

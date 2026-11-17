@@ -39,6 +39,11 @@ function HomeDrawer(props: any) {
     const basicSetting: ISettingOptions[] = [
         {
             icon: "cog-8-tooth",
+            title: t("sidebar.soundEffects"),
+            onPress: () => navigateToSetting("soundEffects"),
+        },
+        {
+            icon: "cog-8-tooth",
             title: t("sidebar.basicSettings"),
             onPress: () => {
                 navigateToSetting("basic");

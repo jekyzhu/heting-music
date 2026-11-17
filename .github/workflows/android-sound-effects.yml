@@ -1,0 +1,35 @@
+name: Android sound effects checks
+on:
+  push:
+    branches: [feature/android-smart-eq]
+  pull_request:
+    paths: ['android-app/**', '.github/workflows/android-sound-effects.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npx jest src/core/soundEffects src/core/accountLibrary src/pages/accountLibrary --runInBand
+      - name: Install the pinned Android native toolchain
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+      - name: Compile Android native integration
+        working-directory: android-app/android
+        run: bash gradlew :app:compileDebugKotlin -PreactNativeArchitectures=arm64-v8a --stacktrace

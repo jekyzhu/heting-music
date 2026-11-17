@@ -18,6 +18,8 @@ import `fun`.upup.musicfree.lyricUtil.LyricUtilPackage
 import `fun`.upup.musicfree.mp3Util.Mp3UtilPackage
 import `fun`.upup.musicfree.utils.UtilsPackage
 import `fun`.upup.musicfree.account.PersonalMusicPackage
+import `fun`.upup.musicfree.soundEffects.SoundEffectsPackage
+import `fun`.upup.musicfree.soundEffects.SoundEffectsEngine
 
 class MainApplication : Application(), ReactApplication {
 
@@ -31,6 +33,7 @@ class MainApplication : Application(), ReactApplication {
               add(Mp3UtilPackage())
               add(LyricUtilPackage())
               add(PersonalMusicPackage())
+              add(SoundEffectsPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
@@ -46,6 +49,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    SoundEffectsEngine.initialize(this)
     SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.

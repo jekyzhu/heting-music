@@ -34,6 +34,7 @@
     "common.name": "Name",
     "common.comment": "Comment",
     "sidebar.basicSettings": "Basic Settings",
+    "sidebar.soundEffects": "Sound Effects",
     "sidebar.pluginManagement": "Plugin Management",
     "sidebar.themeSettings": "Theme Settings",
     "sidebar.scheduleClose": "Schedule Close",
