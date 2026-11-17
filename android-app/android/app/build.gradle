@@ -114,10 +114,11 @@ def getVersion() {
 // }
 
 def appVersion = getVersion()
-def appVersionCode = 400013
+def appVersionCode = 400014
 
 
 android {
+    androidResources { noCompress += 'tflite' }
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
@@ -172,7 +173,16 @@ android {
     }
 }
 
+tasks.register('prepareYamnet', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'node', 'scripts/prepare-yamnet.cjs'
+}
+tasks.named('preBuild').configure { dependsOn 'prepareYamnet' }
+
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    implementation project(':heting-kotlinaudio')
+    implementation 'org.tensorflow:tensorflow-lite-task-audio:0.4.4'
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 

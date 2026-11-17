@@ -23,10 +23,17 @@ object SoundEffectsEngine {
     private var gains = DoubleArray(5)
     private var error: String? = null
     private var animation: Runnable? = null
+    private var automatic = false
 
     fun initialize(context: Context) {
         if (initialized) return
         initialized = true
+        GenreAnalyzer.initialize(context) { genre ->
+            if (enabled && automatic) {
+                gains = presetGains(genre)
+                applyProfile()
+            }
+        }
         val filter = IntentFilter("fun.upup.musicfree.EQ_SESSION").apply {
             addAction("fun.upup.musicfree.EQ_SESSION_CLOSED")
         }
@@ -45,10 +52,16 @@ object SoundEffectsEngine {
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
-    fun configure(isEnabled: Boolean, values: DoubleArray) {
+    fun configure(isEnabled: Boolean, values: DoubleArray, isAutomatic: Boolean,
+        trackKey: String, metadataPreset: String) {
         require(values.size == 5 && values.all { it.isFinite() }) { "Expected five finite EQ gains" }
         enabled = isEnabled
+        automatic = isAutomatic
         gains = values.map { it.coerceIn(-6.0, 6.0) }.toDoubleArray()
+        GenreAnalyzer.configure(enabled && automatic && metadataPreset == "flat", trackKey)
+        if (enabled && automatic && metadataPreset == "flat") {
+            GenreAnalyzer.detected?.let { gains = presetGains(it) }
+        }
         applyProfile()
     }
 
@@ -57,8 +70,20 @@ object SoundEffectsEngine {
         "waitingForPlayback" to (enabled && sessionId == 0),
         "bandCount" to (equalizer?.numberOfBands?.toInt() ?: 0),
         "error" to error,
-        "headroomDb" to max(0.0, gains.maxOrNull() ?: 0.0)
+        "headroomDb" to max(0.0, gains.maxOrNull() ?: 0.0),
+        "detectionState" to GenreAnalyzer.state,
+        "detectedPreset" to GenreAnalyzer.detected,
+        "confidence" to GenreAnalyzer.confidence.toDouble()
     )
+
+    private fun presetGains(genre: String) = when (genre) {
+        "rock" -> doubleArrayOf(3.0, 1.0, -1.0, 2.0, 3.0)
+        "folk" -> doubleArrayOf(-1.0, 1.0, 2.0, 1.0, 0.0)
+        "pop" -> doubleArrayOf(1.0, 0.0, 1.0, 2.0, 1.0)
+        "classical" -> doubleArrayOf(1.0, 0.0, 0.0, 1.0, 2.0)
+        "electronic" -> doubleArrayOf(4.0, 2.0, -1.0, 1.0, 3.0)
+        else -> DoubleArray(5)
+    }
 
     private fun applyProfile() {
         animation?.let { handler.removeCallbacks(it) }

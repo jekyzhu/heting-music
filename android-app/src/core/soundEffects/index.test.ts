@@ -20,22 +20,22 @@ beforeEach(() => {
 test("automatic track changes apply different profiles and unknown tracks reset to flat", () => {
     SoundEffects.update({ mode: "auto" });
     SoundEffects.trackChanged({ genre: "rock" });
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [3, 1, -1, 2, 3]);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [3, 1, -1, 2, 3], true, expect.any(String), 'rock');
     SoundEffects.trackChanged({ genre: "folk" });
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [-1, 1, 2, 1, 0]);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [-1, 1, 2, 1, 0], true, expect.any(String), 'folk');
     SoundEffects.trackChanged(null);
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [0, 0, 0, 0, 0]);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [0, 0, 0, 0, 0], false, '', 'flat');
 });
 test("manual adjustment exits automatic mode, persists and survives track changes", () => {
     SoundEffects.update({ mode: "auto" });
     SoundEffects.trackChanged({ genre: "rock" });
     SoundEffects.setBand(0, 5);
     SoundEffects.trackChanged({ genre: "folk" });
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [5, 1, -1, 2, 3]);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [5, 1, -1, 2, 3], false, expect.any(String), 'custom');
     const db = (MMKV as unknown as jest.Mock).mock.results[0].value;
     expect(JSON.parse(db.set.mock.calls.at(-1)[1])).toMatchObject({ mode: "manual", preset: "custom" });
 });
 test("disabling effects reaches the native engine", () => {
     SoundEffects.update({ enabled: false });
-    expect(engine.configure).toHaveBeenLastCalledWith(false, [0, 0, 0, 0, 0]);
+    expect(engine.configure).toHaveBeenLastCalledWith(false, [0, 0, 0, 0, 0], false, expect.any(String), 'flat');
 });

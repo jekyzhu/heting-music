@@ -31,7 +31,10 @@ export default function SoundEffectsSetting() {
         const timer = setInterval(() => { void SoundEffects.refreshStatus(); }, 1500);
         return () => clearInterval(timer);
     }, []);
-    const currentName = profile.preset === "custom" ? "我的音效" : PRESETS[profile.preset].name;
+    const shownPreset = settings.mode === "auto" ? status.detectedPreset ?? profile.preset : profile.preset;
+    const shownGains = settings.mode === "auto" && status.detectedPreset
+        ? PRESETS[status.detectedPreset].gains : profile.gains;
+    const currentName = shownPreset === "custom" ? "我的音效" : PRESETS[shownPreset].name;
     return <ScrollView contentContainerStyle={styles.page}>
         <View style={styles.row}>
             <ThemeText fontWeight="bold">开启音效</ThemeText>
@@ -50,14 +53,21 @@ export default function SoundEffectsSetting() {
         </View>
         <ThemeText style={styles.description}>
             {settings.mode === "auto" ?
-                "当前根据歌曲提供的风格标签切换；没有明确标签时使用原声。此版本尚未启用音频分析识别。手动选择或调节将退出自动模式。" :
+                "优先使用歌曲风格标签；没有标签时，在手机本地分析播放音频，连续多次识别一致后切换。不确定时保持原声。手动调节将退出自动模式。" :
                 "选择预设，或拖动滑杆定制。调节结果自动保存为“我的音效”，切歌后继续保留。"}
         </ThemeText>
+        {settings.enabled && settings.mode === "auto" && status.detectionState !== "off" &&
+            <ThemeText style={styles.description}>
+                {status.detectionState === "detected" ? `音频识别：${currentName}` :
+                    status.detectionState === "uncertain" ? "风格尚不确定，继续使用原声" :
+                    status.detectionState === "unavailable" ? "本机音频识别暂不可用，可手动选择音效" :
+                    "正在分析音频，通常需要约 10–40 秒有效播放"}
+            </ThemeText>}
         <View style={styles.presets}>
             {(Object.keys(PRESETS) as Preset[]).map(preset =>
                 <TouchableOpacity key={preset} accessibilityRole="button"
-                    accessibilityState={{ selected: profile.preset === preset }}
-                    style={[styles.preset, { borderColor: profile.preset === preset ? colors.primary : colors.textSecondary }]}
+                    accessibilityState={{ selected: shownPreset === preset }}
+                    style={[styles.preset, { borderColor: shownPreset === preset ? colors.primary : colors.textSecondary }]}
                     onPress={() => SoundEffects.update({ mode: "manual", preset })}>
                     <ThemeText>{PRESETS[preset].name}</ThemeText>
                 </TouchableOpacity>)}
@@ -67,7 +77,7 @@ export default function SoundEffectsSetting() {
             </TouchableOpacity>
         </View>
         {FREQUENCIES.map((_, index) => <Band key={index} index={index}
-            value={profile.gains[index]} disabled={!settings.enabled} />)}
+            value={shownGains[index]} disabled={!settings.enabled} />)}
         <ThemeText style={styles.description}>
             音效平滑过渡，并预留增益余量以减少削波，开启后音量可能稍低。预设是听感起点，可按耳机和个人喜好修改。
         </ThemeText>

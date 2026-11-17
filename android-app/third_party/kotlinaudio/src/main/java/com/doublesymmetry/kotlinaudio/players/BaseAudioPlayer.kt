@@ -49,6 +49,10 @@ import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYB
 import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
 import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
 import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.DefaultRenderersFactory
+import com.google.android.exoplayer2.audio.AudioSink
+import com.google.android.exoplayer2.audio.DefaultAudioSink
+import com.doublesymmetry.kotlinaudio.players.components.HetingAnalysisProcessor
 import com.google.android.exoplayer2.ForwardingPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.MediaMetadata
@@ -220,7 +224,18 @@ abstract class BaseAudioPlayer internal constructor(
             cache = PlayerCache.getInstance(context, cacheConfig)
         }
 
-        exoPlayer = ExoPlayer.Builder(context)
+        val renderers = object : DefaultRenderersFactory(context) {
+            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean, enableOffload: Boolean): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(false)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
+                    .setAudioProcessors(arrayOf(HetingAnalysisProcessor()))
+                    .build()
+            }
+        }
+        exoPlayer = ExoPlayer.Builder(context, renderers)
             .setHandleAudioBecomingNoisy(playerConfig.handleAudioBecomingNoisy)
             .setWakeMode(
                 when (playerConfig.wakeMode) {

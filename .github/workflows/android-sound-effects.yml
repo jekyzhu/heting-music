@@ -10,7 +10,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: android-app
@@ -25,6 +25,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.1'
+          cache-dependency-path: account-engine/go.sum
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npx tsc --noEmit
       - run: npx jest src/core/soundEffects src/core/accountLibrary src/pages/accountLibrary --runInBand
@@ -33,5 +37,26 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
       - name: Compile Android native integration
         working-directory: android-app/android
-        run: bash gradlew :app:compileDebugKotlin -PreactNativeArchitectures=arm64-v8a --stacktrace
+        run: bash gradlew :app:testDebugUnitTest --tests '*soundEffects*' -PreactNativeArchitectures=arm64-v8a --stacktrace
+      - name: Build embedded account engine
+        run: bash scripts/build-account-engine.sh
+      - name: Build standalone Android APK
+        working-directory: android-app/android
+        run: bash gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --stacktrace
+      - name: Package source, model and installation notes
+        working-directory: .
+        run: |
+          mkdir -p dist source-package
+          git archive HEAD | tar -x -C source-package
+          cp android-app/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk dist/Heting-0.8.0-arm64.apk
+          mkdir -p source-package/android-app/android/app/src/main/assets
+          cp android-app/android/app/src/main/assets/yamnet.tflite source-package/android-app/android/app/src/main/assets/
+          cp docs/安卓智能音效.md dist/使用说明.md
+          (cd source-package && zip -qr ../dist/Heting-0.8.0-source.zip .)
+          sha256sum dist/Heting-0.8.0-arm64.apk dist/Heting-0.8.0-source.zip > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Heting-0.8.0-Android
+          path: dist/
+          retention-days: 30
 

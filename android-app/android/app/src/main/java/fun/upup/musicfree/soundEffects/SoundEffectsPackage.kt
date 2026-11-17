@@ -11,12 +11,13 @@ class SoundEffectsModule(context: ReactApplicationContext) : ReactContextBaseJav
     override fun getName() = "HetingSoundEffects"
 
     @ReactMethod
-    fun configure(enabled: Boolean, gains: ReadableArray, promise: Promise) {
+    fun configure(enabled: Boolean, gains: ReadableArray, automatic: Boolean,
+        trackKey: String, metadataPreset: String, promise: Promise) {
         try {
             val values = DoubleArray(gains.size()) { gains.getDouble(it) }
             handler.post {
                 try {
-                    SoundEffectsEngine.configure(enabled, values)
+                    SoundEffectsEngine.configure(enabled, values, automatic, trackKey, metadataPreset)
                     promise.resolve(Arguments.makeNativeMap(SoundEffectsEngine.status()))
                 } catch (e: RuntimeException) { promise.reject("EQ_CONFIG", e) }
             }

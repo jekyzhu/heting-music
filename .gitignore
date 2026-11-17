@@ -24,6 +24,7 @@ xcuserdata/
 *.xcframework/
 *.xcarchive/
 local.properties
+yamnet.tflite
 keystore.properties
 cookies.json
 sessions.json
