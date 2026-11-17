@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 object HetingAnalysisTap {
     @Volatile var enabled = false
     @Volatile var onWindow: ((FloatArray, Long) -> Unit)? = null
+    @Volatile var onReset: ((Long) -> Unit)? = null
     val epoch = AtomicLong(0)
 }
 
@@ -63,7 +64,8 @@ class HetingAnalysisProcessor : BaseAudioProcessor() {
         }
     }
     override fun onFlush() {
-        HetingAnalysisTap.epoch.incrementAndGet()
+        val epoch = HetingAnalysisTap.epoch.incrementAndGet()
+        HetingAnalysisTap.onReset?.invoke(epoch)
         generation = -1
     }
 }

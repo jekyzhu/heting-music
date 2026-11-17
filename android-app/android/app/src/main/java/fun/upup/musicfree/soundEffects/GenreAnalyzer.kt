@@ -31,6 +31,16 @@ object GenreAnalyzer {
     fun initialize(appContext: Context, onDetected: (String) -> Unit) {
         context = appContext.applicationContext
         listener = onDetected
+        HetingAnalysisTap.onReset = { epoch ->
+            main.post {
+                if (active && epoch == HetingAnalysisTap.epoch.get()) {
+                    detected = null; confidence = 0f; terminal = null
+                    state = "sampling"
+                    HetingAnalysisTap.enabled = true
+                    listener?.invoke("flat")
+                }
+            }
+        }
         HetingAnalysisTap.onWindow = { samples, epoch ->
             if (active && busy.compareAndSet(false, true)) {
                 worker.execute {
