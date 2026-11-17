@@ -29,6 +29,11 @@ class HetingAnalysisProcessor : BaseAudioProcessor() {
         if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT) inputAudioFormat else AudioFormat.NOT_SET
 
     override fun queueInput(inputBuffer: ByteBuffer) {
+        // ExoPlayer drains processors with AudioProcessor.EMPTY_BUFFER. Before
+        // our first allocation, replaceOutputBuffer(0) returns that same singleton;
+        // put(inputBuffer) would then copy a buffer into itself and throw, even
+        // with analysis disabled. An empty input must leave pending output intact.
+        if (!inputBuffer.hasRemaining()) return
         val analysis = inputBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
         val output = replaceOutputBuffer(inputBuffer.remaining())
         output.put(inputBuffer).flip() // Playback bytes remain bit-for-bit unchanged.
