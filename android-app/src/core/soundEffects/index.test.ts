@@ -43,11 +43,11 @@ test("disabling effects reaches the native engine", () => {
 test("stronger automatic/manual presets match and manual edits retain the audible curve", () => {
     SoundEffects.update({ mode: "auto", strength: "vivid" });
     SoundEffects.trackChanged({ genre: "rock" });
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [5, 1.5, -1.5, 3.5, 5], true, expect.any(String), "rock", 1.7);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [6, 4, -2, 2, 4], true, expect.any(String), "rock", 1.7);
     SoundEffects.setBand(1, 2);
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [5, 2, -1.5, 3.5, 5], false, expect.any(String), "custom", 1.7);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [6, 2, -2, 2, 4], false, expect.any(String), "custom", 1.7);
     SoundEffects.update({ strength: "gentle" });
-    expect(engine.configure).toHaveBeenLastCalledWith(true, [5, 2, -1.5, 3.5, 5], false, expect.any(String), "custom", 0.65);
+    expect(engine.configure).toHaveBeenLastCalledWith(true, [6, 2, -2, 2, 4], false, expect.any(String), "custom", 0.65);
 });
 test("original comparison bypasses EQ without persisting settings or stopping analysis", async () => {
     SoundEffects.update({ mode: "auto", strength: "vivid" });

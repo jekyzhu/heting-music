@@ -67,6 +67,8 @@ export function genrePreset(track: unknown): Preset {
     return matches.size === 1 ? [...matches][0] : "flat";
 }
 export function presetGains(preset: Preset, strength: Strength) {
+    // Stronger bass/kick for wired headphones; other strengths keep the original contour.
+    if (preset === "rock" && strength === "vivid") return [6, 4, -2, 2, 4];
     return PRESETS[preset].gains.map(gain => clampGain(Math.round(gain * STRENGTHS[strength].scale * 2) / 2));
 }
 export function effectiveProfile(settings: Settings, track: unknown) {

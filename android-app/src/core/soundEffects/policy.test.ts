@@ -30,7 +30,7 @@ test("restores damaged or outdated settings safely", () => {
 });
 test("vivid defaults apply to old presets while saved custom bands stay exact", () => {
     const oldPreset = restoreSettings({ enabled: true, mode: "manual", preset: "rock" });
-    expect(effectiveProfile(oldPreset, null).gains).toEqual([5, 1.5, -1.5, 3.5, 5]);
+    expect(effectiveProfile(oldPreset, null).gains).toEqual([6, 4, -2, 2, 4]);
     expect(presetGains("rock", "standard")).toEqual([3, 1, -1, 2, 3]);
     expect(presetGains("folk", "vivid")).toEqual([-1.5, 1.5, 3.5, 1.5, 0]);
     expect(presetGains("flat", "vivid")).toEqual([0, 0, 0, 0, 0]);

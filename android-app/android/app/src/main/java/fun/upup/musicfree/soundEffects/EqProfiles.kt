@@ -6,6 +6,7 @@ import kotlin.math.roundToInt
 object EqProfiles {
     fun gains(genre: String, strength: Double): DoubleArray {
         require(strength.isFinite() && strength in 0.5..2.0)
+        if (genre == "rock" && strength >= 1.5) return doubleArrayOf(6.0, 4.0, -2.0, 2.0, 4.0)
         val base = when (genre) {
             "rock" -> doubleArrayOf(3.0, 1.0, -1.0, 2.0, 3.0)
             "folk" -> doubleArrayOf(-1.0, 1.0, 2.0, 1.0, 0.0)
