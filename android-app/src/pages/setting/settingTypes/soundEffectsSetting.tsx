@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { AppState, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
 import Slider from "@react-native-community/slider";
 import ThemeText from "@/components/base/themeText";
@@ -26,7 +27,7 @@ function Band({ index, value, disabled }: { index: number; value: number; disabl
 export default function SoundEffectsSetting() {
     const { settings, profile, status, previewingOriginal } = useSoundEffects();
     const colors = useColors();
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
         void SoundEffects.refreshStatus();
         const timer = setInterval(() => { void SoundEffects.refreshStatus(); }, 1500);
         const listener = AppState.addEventListener("change", state => {
@@ -36,7 +37,7 @@ export default function SoundEffectsSetting() {
             clearInterval(timer); listener.remove();
             void SoundEffects.previewOriginal(false);
         };
-    }, []);
+    }, []));
     const shownPreset = settings.mode === "auto" ? status.detectedPreset ?? profile.preset : profile.preset;
     const shownGains = settings.mode === "auto" && status.detectedPreset
         ? presetGains(status.detectedPreset, settings.strength) : profile.gains;
