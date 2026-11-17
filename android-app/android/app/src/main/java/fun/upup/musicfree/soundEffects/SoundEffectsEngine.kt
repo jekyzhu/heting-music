@@ -24,6 +24,8 @@ object SoundEffectsEngine {
     private var error: String? = null
     private var animation: Runnable? = null
     private var automatic = false
+    private var strengthScale = 1.0
+    private var bypassed = false
 
     fun initialize(context: Context) {
         if (initialized) return
@@ -53,10 +55,12 @@ object SoundEffectsEngine {
     }
 
     fun configure(isEnabled: Boolean, values: DoubleArray, isAutomatic: Boolean,
-        trackKey: String, metadataPreset: String) {
+        trackKey: String, metadataPreset: String, strength: Double) {
         require(values.size == 5 && values.all { it.isFinite() }) { "Expected five finite EQ gains" }
+        require(strength.isFinite() && strength in 0.5..2.0) { "Invalid preset strength" }
         enabled = isEnabled
         automatic = isAutomatic
+        strengthScale = strength
         gains = values.map { it.coerceIn(-6.0, 6.0) }.toDoubleArray()
         GenreAnalyzer.configure(enabled && automatic && metadataPreset == "flat", trackKey)
         if (enabled && automatic && metadataPreset == "flat") {
@@ -65,8 +69,15 @@ object SoundEffectsEngine {
         applyProfile()
     }
 
+    // Comparing the original must not reset the genre detector or saved settings.
+    fun setBypass(value: Boolean) {
+        bypassed = value
+        applyProfile()
+    }
+
     fun status(): Map<String, Any?> = mapOf(
-        "active" to (enabled && equalizer != null && error == null),
+        "active" to (enabled && !bypassed && equalizer?.enabled == true && equalizer?.hasControl() == true && error == null),
+        "bypassed" to bypassed,
         "waitingForPlayback" to (enabled && sessionId == 0),
         "bandCount" to (equalizer?.numberOfBands?.toInt() ?: 0),
         "error" to error,
@@ -76,20 +87,13 @@ object SoundEffectsEngine {
         "confidence" to GenreAnalyzer.confidence.toDouble()
     )
 
-    private fun presetGains(genre: String) = when (genre) {
-        "rock" -> doubleArrayOf(3.0, 1.0, -1.0, 2.0, 3.0)
-        "folk" -> doubleArrayOf(-1.0, 1.0, 2.0, 1.0, 0.0)
-        "pop" -> doubleArrayOf(1.0, 0.0, 1.0, 2.0, 1.0)
-        "classical" -> doubleArrayOf(1.0, 0.0, 0.0, 1.0, 2.0)
-        "electronic" -> doubleArrayOf(4.0, 2.0, -1.0, 1.0, 3.0)
-        else -> DoubleArray(5)
-    }
+    private fun presetGains(genre: String) = EqProfiles.gains(genre, strengthScale)
 
     private fun applyProfile() {
         animation?.let { handler.removeCallbacks(it) }
         animation = null
         error = null
-        if (!enabled) { release(); return }
+        if (!enabled || bypassed) { release(); return }
         if (sessionId <= 0) return
         try {
             val eq = equalizer ?: Equalizer(0, sessionId).also { equalizer = it }

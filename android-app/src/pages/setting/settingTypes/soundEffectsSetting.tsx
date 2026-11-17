@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
+import { AppState, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
 import Slider from "@react-native-community/slider";
 import ThemeText from "@/components/base/themeText";
 import useColors from "@/hooks/useColors";
 import { SoundEffects, useSoundEffects } from "@/core/soundEffects";
-import { FREQUENCIES, PRESETS, Preset } from "@/core/soundEffects/policy";
+import { FREQUENCIES, PRESETS, Preset, presetGains, STRENGTHS, Strength } from "@/core/soundEffects/policy";
 
 function Band({ index, value, disabled }: { index: number; value: number; disabled: boolean }) {
     const colors = useColors();
@@ -24,17 +24,24 @@ function Band({ index, value, disabled }: { index: number; value: number; disabl
     </View>;
 }
 export default function SoundEffectsSetting() {
-    const { settings, profile, status } = useSoundEffects();
+    const { settings, profile, status, previewingOriginal } = useSoundEffects();
     const colors = useColors();
     useEffect(() => {
         void SoundEffects.refreshStatus();
         const timer = setInterval(() => { void SoundEffects.refreshStatus(); }, 1500);
-        return () => clearInterval(timer);
+        const listener = AppState.addEventListener("change", state => {
+            if (state !== "active") void SoundEffects.previewOriginal(false);
+        });
+        return () => {
+            clearInterval(timer); listener.remove();
+            void SoundEffects.previewOriginal(false);
+        };
     }, []);
     const shownPreset = settings.mode === "auto" ? status.detectedPreset ?? profile.preset : profile.preset;
     const shownGains = settings.mode === "auto" && status.detectedPreset
-        ? PRESETS[status.detectedPreset].gains : profile.gains;
+        ? presetGains(status.detectedPreset, settings.strength) : profile.gains;
     const currentName = shownPreset === "custom" ? "我的音效" : PRESETS[shownPreset].name;
+    const strengthLabel = shownPreset === "custom" ? "手动曲线" : STRENGTHS[settings.strength].name;
     return <ScrollView contentContainerStyle={styles.page}>
         <View style={styles.row}>
             <ThemeText fontWeight="bold">开启音效</ThemeText>
@@ -42,10 +49,17 @@ export default function SoundEffectsSetting() {
                 onValueChange={enabled => SoundEffects.update({ enabled })} />
         </View>
         <ThemeText style={styles.description}>
-            {!settings.enabled ? "音效已关闭" : status.error ? `音效不可用：${status.error}` :
+            {!settings.enabled ? "音效已关闭" : previewingOriginal ? "正在对比原声 · 点击下方按钮返回音效" : status.error ? `音效不可用：${status.error}` :
                 status.waitingForPlayback ? "播放歌曲后生效" : status.active ?
-                    `正在使用：${currentName} · ${status.bandCount} 个设备频段` : "等待音效引擎"}
+                    `正在使用：${currentName} · ${strengthLabel} · ${status.bandCount} 个设备频段` : "音效暂未生效，设备音效可能未就绪或被其他均衡器占用"}
         </ThemeText>
+        <TouchableOpacity accessibilityRole="button" disabled={!settings.enabled}
+            accessibilityLabel={previewingOriginal ? "返回音效" : "对比原声"}
+            style={[styles.preset, { borderColor: colors.primary, opacity: settings.enabled ? 1 : 0.4 }]}
+            onPress={() => { void SoundEffects.previewOriginal(!previewingOriginal); }}>
+            <ThemeText>{previewingOriginal ? "返回音效" : "对比原声"}</ThemeText>
+        </TouchableOpacity>
+        <ThemeText style={styles.description}>播放同一首歌时来回对比，更容易听出变化。离开此页面会自动返回音效。</ThemeText>
         <View style={styles.row}>
             <ThemeText>根据歌曲风格自动切换</ThemeText>
             <Switch accessibilityLabel="根据歌曲风格自动切换" value={settings.mode === "auto"}
@@ -76,6 +90,18 @@ export default function SoundEffectsSetting() {
                 <ThemeText>我的音效</ThemeText>
             </TouchableOpacity>
         </View>
+        <ThemeText fontWeight="bold">预设音效强度</ThemeText>
+        <View style={[styles.presets, { marginTop: 12 }]}>
+            {(Object.keys(STRENGTHS) as Strength[]).map(strength =>
+                <TouchableOpacity key={strength} accessibilityRole="button"
+                    accessibilityState={{ selected: settings.strength === strength, disabled: settings.mode === "manual" && settings.preset === "custom" }}
+                    disabled={settings.mode === "manual" && settings.preset === "custom"}
+                    style={[styles.preset, { borderColor: settings.strength === strength ? colors.primary : colors.textSecondary }]}
+                    onPress={() => SoundEffects.update({ strength })}>
+                    <ThemeText>{STRENGTHS[strength].name}</ThemeText>
+                </TouchableOpacity>)}
+        </View>
+        <ThemeText style={styles.description}>{settings.mode === "manual" && settings.preset === "custom" ? "我的音效按滑杆值生效，不受预设强度影响。" : "鲜明会拉开低音、人声和高频的差别；喜欢细腻听感可选自然。"}</ThemeText>
         {FREQUENCIES.map((_, index) => <Band key={index} index={index}
             value={shownGains[index]} disabled={!settings.enabled} />)}
         <ThemeText style={styles.description}>

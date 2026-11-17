@@ -10,14 +10,21 @@ export const PRESETS = {
 } as const;
 export type Preset = keyof typeof PRESETS;
 export type Mode = "auto" | "manual";
+export const STRENGTHS = {
+    gentle: { name: "自然", scale: 0.65 },
+    standard: { name: "标准", scale: 1 },
+    vivid: { name: "鲜明", scale: 1.7 },
+} as const;
+export type Strength = keyof typeof STRENGTHS;
 export interface Settings {
     enabled: boolean;
     mode: Mode;
     preset: Preset | "custom";
     custom: number[];
+    strength: Strength;
 }
 export const DEFAULT_SETTINGS: Settings = {
-    enabled: false, mode: "manual", preset: "flat", custom: [0, 0, 0, 0, 0],
+    enabled: false, mode: "manual", preset: "flat", custom: [0, 0, 0, 0, 0], strength: "vivid",
 };
 export function clampGain(value: number) {
     return Number.isFinite(value) ? Math.max(-6, Math.min(6, value)) : 0;
@@ -27,6 +34,7 @@ export function restoreSettings(value: unknown): Settings {
     return {
         enabled: v?.enabled === true,
         mode: v?.mode === "auto" ? "auto" : "manual",
+        strength: v?.strength === "gentle" || v?.strength === "standard" ? v.strength : "vivid",
         preset: v?.preset === "custom" || (typeof v?.preset === "string" &&
             Object.prototype.hasOwnProperty.call(PRESETS, v.preset)) ? v.preset : "flat",
         custom: Array.isArray(v?.custom) && v.custom.length === 5
@@ -58,10 +66,13 @@ export function genrePreset(track: unknown): Preset {
     }
     return matches.size === 1 ? [...matches][0] : "flat";
 }
+export function presetGains(preset: Preset, strength: Strength) {
+    return PRESETS[preset].gains.map(gain => clampGain(Math.round(gain * STRENGTHS[strength].scale * 2) / 2));
+}
 export function effectiveProfile(settings: Settings, track: unknown) {
     const preset = settings.mode === "auto" ? genrePreset(track) : settings.preset;
     return {
         preset,
-        gains: preset === "custom" ? settings.custom.map(clampGain) : [...PRESETS[preset].gains],
+        gains: preset === "custom" ? settings.custom.map(clampGain) : presetGains(preset, settings.strength),
     };
 }

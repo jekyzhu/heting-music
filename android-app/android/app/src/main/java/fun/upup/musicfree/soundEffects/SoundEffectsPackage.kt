@@ -12,16 +12,25 @@ class SoundEffectsModule(context: ReactApplicationContext) : ReactContextBaseJav
 
     @ReactMethod
     fun configure(enabled: Boolean, gains: ReadableArray, automatic: Boolean,
-        trackKey: String, metadataPreset: String, promise: Promise) {
+        trackKey: String, metadataPreset: String, strength: Double, promise: Promise) {
         try {
             val values = DoubleArray(gains.size()) { gains.getDouble(it) }
             handler.post {
                 try {
-                    SoundEffectsEngine.configure(enabled, values, automatic, trackKey, metadataPreset)
+                    SoundEffectsEngine.configure(enabled, values, automatic, trackKey, metadataPreset, strength)
                     promise.resolve(Arguments.makeNativeMap(SoundEffectsEngine.status()))
                 } catch (e: RuntimeException) { promise.reject("EQ_CONFIG", e) }
             }
         } catch (e: RuntimeException) { promise.reject("EQ_CONFIG", e) }
+    }
+    @ReactMethod
+    fun setBypass(bypass: Boolean, promise: Promise) {
+        handler.post {
+            try {
+                SoundEffectsEngine.setBypass(bypass)
+                promise.resolve(Arguments.makeNativeMap(SoundEffectsEngine.status()))
+            } catch (e: RuntimeException) { promise.reject("EQ_PREVIEW", e) }
+        }
     }
     @ReactMethod
     fun getStatus(promise: Promise) {

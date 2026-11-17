@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, effectiveProfile, genrePreset, restoreSettings } from "./policy";
+import { DEFAULT_SETTINGS, effectiveProfile, genrePreset, restoreSettings, presetGains } from "./policy";
 
 test("recognizes explicit rock and folk metadata in either language", () => {
     expect(genrePreset({ genre: "Rock" })).toBe("rock");
@@ -27,4 +27,13 @@ test("restores damaged or outdated settings safely", () => {
         .toEqual(DEFAULT_SETTINGS);
     expect(restoreSettings({ custom: [NaN, Infinity, -99, 99, "oops"] }).custom)
         .toEqual([0, 0, -6, 6, 0]);
+});
+test("vivid defaults apply to old presets while saved custom bands stay exact", () => {
+    const oldPreset = restoreSettings({ enabled: true, mode: "manual", preset: "rock" });
+    expect(effectiveProfile(oldPreset, null).gains).toEqual([5, 1.5, -1.5, 3.5, 5]);
+    expect(presetGains("rock", "standard")).toEqual([3, 1, -1, 2, 3]);
+    expect(presetGains("folk", "vivid")).toEqual([-1.5, 1.5, 3.5, 1.5, 0]);
+    expect(presetGains("flat", "vivid")).toEqual([0, 0, 0, 0, 0]);
+    const custom = [1, -2, 3, 0.5, 6];
+    expect(effectiveProfile(restoreSettings({ preset: "custom", custom, strength: "vivid" }), null).gains).toEqual(custom);
 });
