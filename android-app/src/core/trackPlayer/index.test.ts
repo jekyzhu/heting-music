@@ -34,6 +34,7 @@ jest.mock("react-native-track-player", () => {
 import NativePlayer from "react-native-track-player";
 import Player from "./index";
 import { showDialog } from "@/components/dialogs/useDialog";
+import PersistStatus from "@/utils/persistStatus";
 const native = NativePlayer as any;
 const song = (id = "one") => ({ id, platform: "我的网易云", title: id, artist: "artist", artwork: "" } as IMusic.IMusicItem);
 const getMediaSource = jest.fn();
@@ -41,6 +42,7 @@ const plugin = { methods: { getMediaSource } };
 beforeEach(async () => {
     await Player.clearPlayList();
     jest.clearAllMocks();
+    (PersistStatus.get as jest.Mock).mockReset();
     getMediaSource.mockResolvedValue({ url: "http://127.0.0.1:43210/audio", headers: { Authorization: "Bearer test-only" } });
     Player.injectDependencies({ getConfig: () => undefined } as any,
         { addMusic: jest.fn() } as any, { getByName: () => plugin, getByMedia: () => plugin } as any);
@@ -106,4 +108,16 @@ test("stored per-quality sources retain URL and headers when a plugin is unavail
     getMediaSource.mockResolvedValue(null);
     await Player.play({ ...song(), source: { standard: { url: "https://example.org/cached.mp3", headers: { Authorization: "Bearer cached-test" } } } });
     expect(native.queue[0]).toMatchObject({ url: "https://example.org/cached.mp3", headers: { Authorization: "Bearer cached-test" } });
+});
+test("late startup restoration cannot replace a user's newly started stream", async () => {
+    const saved = { ...song(), url: "http://127.0.0.1:1/expired", headers: { Authorization: "Bearer expired" } };
+    (PersistStatus.get as jest.Mock).mockImplementation(key => key === "music.playList" ? [saved] : key === "music.musicItem" ? saved : undefined);
+    let restore!: (value: any) => void;
+    getMediaSource.mockImplementationOnce(() => new Promise(done => { restore = done; }));
+    await Player.setupTrackPlayer();
+    await Player.play(song());
+    restore({ url: "https://example.org/late-restoration.mp3" });
+    await Promise.resolve(); await Promise.resolve();
+    expect(native.queue[0].url).toBe("http://127.0.0.1:43210/audio");
+    expect((await native.getPlaybackState()).state).toBe("playing");
 });

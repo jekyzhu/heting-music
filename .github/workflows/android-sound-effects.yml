@@ -51,6 +51,15 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: cd android-app/android && bash gradlew :heting-kotlinaudio:connectedDebugAndroidTest -PreactNativeArchitectures=arm64-v8a --stacktrace
+      - name: Test playback compatibility on Android 16
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          force-avd-creation: true
+          script: cd android-app/android && bash gradlew :heting-kotlinaudio:connectedDebugAndroidTest -PreactNativeArchitectures=arm64-v8a --stacktrace
       - name: Save playback test evidence
         if: always()
         uses: actions/upload-artifact@v4

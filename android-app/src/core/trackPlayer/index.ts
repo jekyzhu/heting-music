@@ -153,6 +153,7 @@ class TrackPlayer extends EventEmitter<{
         }
 
         if (track && this.isInPlayList(track)) {
+            const restoreGeneration = this.playbackGeneration;
             if (!this.configService.getConfig("basic.autoPlayWhenAppStart")) {
                 track.isInit = true;
             }
@@ -161,16 +162,21 @@ class TrackPlayer extends EventEmitter<{
             this.pluginManagerService.getByMedia(track)
                 ?.methods.getMediaSource(track, quality)
                 .then(async newSource => {
-                    track.url = newSource?.url || track.url;
-                    track.headers = newSource?.headers || track.headers;
+                    if (restoreGeneration !== this.playbackGeneration || !newSource?.url) return;
+                    // The embedded server's port/key change when the app restarts.
+                    // Never restore a saved account stream URL or its old headers.
+                    track.url = newSource.url;
+                    track.headers = newSource.headers;
 
                     if (isSameMediaItem(this.currentMusic, track)) {
-                        await this.setTrackSource(track as Track, false);
-                        if (progress) {
+                        await this.setTrackSource(track as Track, false, restoreGeneration);
+                        if (progress && restoreGeneration === this.playbackGeneration) {
                             // 异步
                             this.seekTo(progress);
                         }
                     }
+                }).catch(() => {
+                    errorLog("恢复音源失败", { code: "restore-source-unavailable" });
                 });
             this.setCurrentMusic(track);
 
